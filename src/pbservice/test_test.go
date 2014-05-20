@@ -1,6 +1,5 @@
 package pbservice
 
-import "viewservice"
 import "fmt"
 import "io"
 import "net"
@@ -11,6 +10,7 @@ import "runtime"
 import "math/rand"
 import "os"
 import "strconv"
+import "../viewservice"
 
 func check(ck *Clerk, key string, value string) {
   v := ck.Get(key)

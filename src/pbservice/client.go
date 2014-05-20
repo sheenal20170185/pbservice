@@ -1,6 +1,6 @@
 package pbservice
 
-import "viewservice"
+import "../viewservice"
 import "net/rpc"
 // You'll probably need to uncomment this:
 // import "time"

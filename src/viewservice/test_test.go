@@ -124,6 +124,9 @@ func Test1(t *testing.T) {
     for i := 0; i < DeadPings * 2; i++ {
       ck3.Ping(0)
       v, _ := ck1.Ping(vx.Viewnum)
+      
+      //fmt.Println("test", v)
+      
       if v.Primary == ck1.me && v.Backup == ck3.me {
         break;
       }
@@ -165,6 +168,8 @@ func Test1(t *testing.T) {
       vx, _ := ck3.Get()
       ck3.Ping(vx.Viewnum)
       time.Sleep(PingInterval)
+      
+      //fmt.Println("test", vx)
     }
     v, _ := ck3.Get()
     if v.Primary != ck3.me || v.Backup != "" {
@@ -180,10 +185,14 @@ func Test1(t *testing.T) {
     // set up p=ck3 b=ck1, but
     // but do not ack
     vx, _ := ck1.Get()
+    
+    //fmt.Println("test", vx)
+    
     for i := 0; i < DeadPings * 3; i++ {
       ck1.Ping(0)
       ck3.Ping(vx.Viewnum)
       v, _ := ck1.Get()
+      //fmt.Println("test2", v)
       if v.Viewnum > vx.Viewnum {
         break
       }
@@ -193,6 +202,9 @@ func Test1(t *testing.T) {
     vy, _ := ck1.Get()
     // ck3 is the primary, but it never acked.
     // let ck3 die. check that ck1 is not promoted.
+    
+    //fmt.Println("test3", vy)
+    
     for i := 0; i < DeadPings * 3; i++ {
       v, _ := ck1.Ping(vy.Viewnum)
       if v.Viewnum > vy.Viewnum {
@@ -215,6 +227,7 @@ func Test1(t *testing.T) {
       ck2.Ping(0)
       ck3.Ping(v.Viewnum)
       time.Sleep(PingInterval)
+      fmt.Println("test3", v)
     }
     for i := 0; i < DeadPings * 2; i++ {
       ck2.Ping(0)
