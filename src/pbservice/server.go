@@ -20,24 +20,109 @@ type PBServer struct {
   me string
   vs *viewservice.Clerk
   // Your declarations here.
+  
+  view viewservice.View
+  kv map[string]string
+  oldBackup string
 }
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 
-  // Your code here.
+	// Your code here.
+	//pb.mu.Lock()
+	//defer pb.mu.Unlock()
+	
+	key := args.Key
+	value, ok := pb.kv[key]
+	
+	if ok {
+		reply.Value = value
+		reply.Err = OK
+	} else {
+		reply.Value = ""
+		reply.Err = ErrNoKey
+	}
+	
 
-  return nil
+	return nil
 }
 
 func (pb *PBServer) Put(args *PutArgs, reply *PutReply) error {
-  reply.Err = OK
+	reply.Err = OK
 
 
-  // Your code here.
+	// Your code here.
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
 
-  return nil
+	key := args.Key
+	value := args.Value
+	
+	if pb.view.Primary == pb.me {
+		pb.kv[key] = value
+		
+		if pb.view.Backup != "" {
+			//update backup
+			updateArgs := UpdateArgs{Key: key, Value: value}
+			updateReply := UpdateReply{}
+			ok := call(pb.view.Backup, "PBServer.Update", updateArgs, &updateReply)
+			for updateReply.Err != OK || ok == false {
+				//rpc failed
+				ok = call(pb.view.Backup, "PBServer.Update", updateArgs, &updateReply)
+				time.Sleep(viewservice.PingInterval)
+			}
+		}
+		
+	} else {
+		// not the primary
+		reply.Err = ErrWrongServer
+	}
+
+	return nil
 }
 
+// function to update the put to the backup
+func (pb *PBServer) Update(args *UpdateArgs, reply *UpdateReply) error {
+
+	
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	
+	key := args.Key
+	value := args.Value
+	
+	if pb.view.Backup == pb.me {
+		pb.kv[key] = value
+		reply.Err = OK
+	} else {
+		reply.Err = ErrWrongServer
+	}
+	
+	//fmt.Println("pbserver update", pb.me, pb.kv)
+	
+	return nil
+}
+
+// function to forward the kv map to the new backup
+func (pb *PBServer) Forward(args *ForwardArgs, reply *ForwardReply) error{
+	
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+	
+	if pb.view.Backup == pb.me {
+		pb.kv = args.kv
+		reply.Err = OK
+		
+		
+		
+	} else {
+		reply.Err = ErrWrongServer
+	}
+	
+	fmt.Println("pbserver forward:", pb.me, pb.kv)
+	
+	return nil
+}
 
 //
 // ping the viewserver periodically.
@@ -47,7 +132,56 @@ func (pb *PBServer) Put(args *PutArgs, reply *PutReply) error {
 //
 func (pb *PBServer) tick() {
 
-  // Your code here.
+	// Your code here.
+	//pb.mu.Lock()
+	//defer pb.mu.Unlock()
+
+	view, ok := pb.vs.Ping(pb.view.Viewnum)
+	if ok != nil {
+		log.Fatal("pbservice tick: ping error\n")
+		return
+	}
+	
+	//pb.vs.Ping(pb.view.Viewnum)
+	if view != pb.view {
+		pb.view = view
+		if view.Primary == pb.me  && view.Backup != ""{
+			//fmt.Println("server tick primary:", pb.me, pb.kv)
+			//fmt.Println("server tick backup:", pb.view.Backup)
+			
+			
+			/*
+			//forwards data
+			
+			forwardArgs := ForwardArgs{kv: pb.kv}
+			forwardReply := ForwardReply{}
+		
+			//fmt.Println("server tick: forword", forwardArgs.kv)
+			ok := call(pb.view.Backup, "PBServer.Forward", forwardArgs, &forwardReply)
+			for forwardReply.Err != OK || ok == false {
+				//rpc failed
+				fmt.Println("server tick: rpc failed", pb.view.Backup, forwardReply, ok)
+				ok = call(view.Backup, "PBServer.Forward", forwardArgs, &forwardReply)
+				time.Sleep(viewservice.PingInterval)
+			}
+			*/
+			
+			for k, v := range pb.kv {
+				//update backup
+				updateArgs := UpdateArgs{Key: k, Value: v}
+				updateReply := UpdateReply{}
+				ok := call(pb.view.Backup, "PBServer.Update", updateArgs, &updateReply)
+				for updateReply.Err != OK || ok == false {
+					//rpc failed
+					ok = call(pb.view.Backup, "PBServer.Update", updateArgs, &updateReply)
+					time.Sleep(viewservice.PingInterval)
+				}	
+				
+			}
+		
+		}
+	}
+  
 }
 
 // tell the server to shut itself down.
@@ -63,6 +197,13 @@ func StartServer(vshost string, me string) *PBServer {
   pb.me = me
   pb.vs = viewservice.MakeClerk(me, vshost)
   // Your pb.* initializations here.
+  pb.view = viewservice.View{}
+  pb.view.Primary = ""
+  pb.view.Backup = ""
+  pb.view.Viewnum = 0
+  pb.kv = make(map[string]string)
+  pb.oldBackup = ""
+  
 
   rpcs := rpc.NewServer()
   rpcs.Register(pb)

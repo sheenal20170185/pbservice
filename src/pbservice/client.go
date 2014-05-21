@@ -3,7 +3,7 @@ package pbservice
 import "../viewservice"
 import "net/rpc"
 // You'll probably need to uncomment this:
-// import "time"
+import "time"
 
 
 type Clerk struct {
@@ -57,9 +57,18 @@ func call(srv string, rpcname string,
 //
 func (ck *Clerk) Get(key string) string {
 
-  // Your code here.
+	// Your code here.
+	args := GetArgs{Key: key}
+	reply := GetReply{}
 
-  return "???"
+	ok := call(ck.vs.Primary(), "PBServer.Get", args, &reply)
+	for reply.Err != OK || ok == false {
+		//rpc failed
+		ok = call(ck.vs.Primary(), "PBServer.Get", args, &reply)
+		time.Sleep(viewservice.PingInterval)
+	} 
+
+	return reply.Value
 }
 
 //
@@ -68,5 +77,15 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) Put(key string, value string) {
 
-  // Your code here.
+	// Your code here.
+	args := PutArgs{Key: key, Value: value}
+	reply := PutReply{}
+
+	ok := call(ck.vs.Primary(), "PBServer.Put", args, &reply)
+	for reply.Err != OK || ok == false {
+		//rpc failed
+		ok = call(ck.vs.Primary(), "PBServer.Put", args, &reply)
+		time.Sleep(viewservice.PingInterval)
+	} 
+
 }

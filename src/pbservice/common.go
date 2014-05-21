@@ -27,3 +27,20 @@ type GetReply struct {
 
 
 // Your RPC definitions here.
+
+type UpdateArgs struct {
+	Key string
+	Value string
+}
+
+type UpdateReply struct {
+	Err Err
+}
+
+type ForwardArgs struct {
+	kv map[string]string
+}
+
+type ForwardReply struct {
+	Err Err
+}
