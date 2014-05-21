@@ -62,7 +62,7 @@ func (ck *Clerk) Get(key string) string {
 	reply := GetReply{}
 
 	ok := call(ck.vs.Primary(), "PBServer.Get", args, &reply)
-	for reply.Err != OK || ok == false {
+	for (reply.Err != OK && reply.Err != ErrNoKey) || ok == false {
 		//rpc failed
 		ok = call(ck.vs.Primary(), "PBServer.Get", args, &reply)
 		time.Sleep(viewservice.PingInterval)

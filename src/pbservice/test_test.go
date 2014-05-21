@@ -470,6 +470,7 @@ func TestRepeatedCrash(t *testing.T) {
 
       // wait long enough for new view to form, backup to be initialized
       time.Sleep(2 * viewservice.PingInterval * viewservice.DeadPings)
+      
     }
   } ()
 
@@ -502,6 +503,7 @@ func TestRepeatedCrash(t *testing.T) {
       ok = true
     }(xi)
   }
+  
 
   time.Sleep(20 * time.Second)
   done = true
@@ -607,6 +609,8 @@ func TestRepeatedCrashUnreliable(t *testing.T) {
       ok = true
     }(xi)
   }
+
+	//fmt.Println("aaaaaaaaaaaaaaaaa")
 
   time.Sleep(20 * time.Second)
   done = true

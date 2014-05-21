@@ -24,6 +24,7 @@ type PBServer struct {
   view viewservice.View
   kv map[string]string
   oldBackup string
+  alive bool
 }
 
 func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
@@ -31,19 +32,23 @@ func (pb *PBServer) Get(args *GetArgs, reply *GetReply) error {
 	// Your code here.
 	//pb.mu.Lock()
 	//defer pb.mu.Unlock()
-	
-	key := args.Key
-	value, ok := pb.kv[key]
-	
-	if ok {
-		reply.Value = value
-		reply.Err = OK
-	} else {
+	//fmt.Println("server get: ", pb.view, pb.me, pb.alive)
+	if pb.view.Primary != pb.me || !pb.alive{
 		reply.Value = ""
-		reply.Err = ErrNoKey
-	}
+		reply.Err = ErrWrongServer
+	} else {
+		key := args.Key
+		value, ok := pb.kv[key]
 	
-
+		if ok {
+			reply.Value = value
+			reply.Err = OK
+		} else {
+			reply.Value = ""
+			reply.Err = ErrNoKey
+		}
+	
+	}
 	return nil
 }
 
@@ -138,10 +143,12 @@ func (pb *PBServer) tick() {
 
 	view, ok := pb.vs.Ping(pb.view.Viewnum)
 	if ok != nil {
-		log.Fatal("pbservice tick: ping error\n")
+		//fmt.Println("pbservice tick: ping error:", pb.me, pb.view, pb.kv)
+		pb.alive = false
 		return
 	}
 	
+	pb.alive = true
 	//pb.vs.Ping(pb.view.Viewnum)
 	if view != pb.view {
 		pb.view = view
@@ -203,6 +210,7 @@ func StartServer(vshost string, me string) *PBServer {
   pb.view.Viewnum = 0
   pb.kv = make(map[string]string)
   pb.oldBackup = ""
+  pb.alive = true
   
 
   rpcs := rpc.NewServer()

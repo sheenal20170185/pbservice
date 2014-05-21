@@ -19,7 +19,7 @@ type ViewServer struct {
   clients map[string]time.Time
   view View
   primaryAck bool
-  volunteers []string
+  volunteer string
   
 }
 
@@ -70,12 +70,8 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 
 		
 		//add new idle server
-		_, ok := vs.clients[me]
-		if !ok {
-			vs.volunteers = append(vs.volunteers, me)
-		}
+		vs.volunteer = me
 		//fmt.Println("server Ping", vs.volunteers)
-		
 		vs.clients[me] = time.Now()
 		return nil
 	}
@@ -91,7 +87,7 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 	}
 
 	//primary restart
-	if me == vs.view.Primary && viewNum == 0 {
+	if me == vs.view.Primary && viewNum == 0 && vs.primaryAck == true{
 
 		vs.view.Primary = vs.view.Backup
 		vs.view.Backup = me
@@ -102,6 +98,7 @@ func (vs *ViewServer) Ping(args *PingArgs, reply *PingReply) error {
 		vs.clients[me] = time.Now()
 		return nil
 	}
+	
 
 	//default
 	
@@ -174,23 +171,20 @@ func (vs *ViewServer) tick() {
 			
 			vs.view.Backup = ""
 			//make a volunteer become a backup
-			if len(vs.volunteers) != 0 {
-				for i, _ := range vs.volunteers {
-					volTime, _ := vs.clients[vs.volunteers[i]]
-					if now.Sub(volTime) > PingInterval {
-						continue
-					}
-					vs.view.Backup = vs.volunteers[i]
-					vs.volunteers = append(vs.volunteers[0:i], vs.volunteers[i+1:]...)
-					break
-					//fmt.Println("server tick", vs.view)
+			if vs.volunteer != "" {
+					volTime, _ := vs.clients[vs.volunteer]
+					if now.Sub(volTime) < PingInterval {
+					
+						vs.view.Backup = vs.volunteer
+						vs.volunteer = ""
+						//fmt.Println("server tick", vs.view)
 				}
 			}
-			
-			
 		}
-		
+			
+			
 	}
+		
 	
 	
 	if vs.view.Backup == "" {
@@ -206,18 +200,15 @@ func (vs *ViewServer) tick() {
 		
 		//fmt.Println("server backup timeout", vs.volunteers)
 		//make a volunteer become a backup
-		if len(vs.volunteers) != 0 {
-				for i, _ := range vs.volunteers {
-					volTime, _ := vs.clients[vs.volunteers[i]]
-					if now.Sub(volTime) > PingInterval {
-						continue
-					}
-					vs.view.Backup = vs.volunteers[i]
-					vs.volunteers = append(vs.volunteers[0:i], vs.volunteers[i+1:]...)
-					break
+		if vs.volunteer != "" {
+				volTime, _ := vs.clients[vs.volunteer]
+				if now.Sub(volTime) < PingInterval {
+				
+					vs.view.Backup = vs.volunteer
+					vs.volunteer = ""
 					//fmt.Println("server tick", vs.view)
-				}
 			}
+		}
 			
 	}
 }
@@ -242,7 +233,7 @@ func StartServer(me string) *ViewServer {
   vs.view.Viewnum = 0
   vs.view.Primary = ""
   vs.view.Backup = ""
-  vs.volunteers = make([]string, 64)
+  vs.volunteer = ""
   vs.primaryAck = false
 
   // tell net/rpc about our RPC server and handlers.
