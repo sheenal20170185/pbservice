@@ -38,7 +38,7 @@ type UpdateReply struct {
 }
 
 type ForwardArgs struct {
-	kv map[string]string
+	KV map[string]string
 }
 
 type ForwardReply struct {

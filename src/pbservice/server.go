@@ -115,7 +115,7 @@ func (pb *PBServer) Forward(args *ForwardArgs, reply *ForwardReply) error{
 	defer pb.mu.Unlock()
 	
 	if pb.view.Backup == pb.me {
-		pb.kv = args.kv
+		pb.kv = args.KV
 		reply.Err = OK
 		
 		
@@ -124,7 +124,7 @@ func (pb *PBServer) Forward(args *ForwardArgs, reply *ForwardReply) error{
 		reply.Err = ErrWrongServer
 	}
 	
-	fmt.Println("pbserver forward:", pb.me, pb.kv)
+	//fmt.Println("pbserver forward:", pb.me, pb.kv)
 	
 	return nil
 }
@@ -157,22 +157,23 @@ func (pb *PBServer) tick() {
 			//fmt.Println("server tick backup:", pb.view.Backup)
 			
 			
-			/*
+			
 			//forwards data
 			
-			forwardArgs := ForwardArgs{kv: pb.kv}
+			forwardArgs := ForwardArgs{KV: pb.kv}
 			forwardReply := ForwardReply{}
 		
 			//fmt.Println("server tick: forword", forwardArgs.kv)
 			ok := call(pb.view.Backup, "PBServer.Forward", forwardArgs, &forwardReply)
 			for forwardReply.Err != OK || ok == false {
 				//rpc failed
-				fmt.Println("server tick: rpc failed", pb.view.Backup, forwardReply, ok)
+				//fmt.Println("server tick: rpc failed", pb.view.Backup, forwardReply, ok)
 				ok = call(view.Backup, "PBServer.Forward", forwardArgs, &forwardReply)
 				time.Sleep(viewservice.PingInterval)
 			}
-			*/
 			
+			
+			/*
 			for k, v := range pb.kv {
 				//update backup
 				updateArgs := UpdateArgs{Key: k, Value: v}
@@ -185,6 +186,7 @@ func (pb *PBServer) tick() {
 				}	
 				
 			}
+			*/
 		
 		}
 	}
